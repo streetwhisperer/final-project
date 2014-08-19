@@ -1,0 +1,476 @@
+<!DOCTYPE html> 
+<html>
+<head>
+	<title>Severity</title>
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="jquery.mobile-1.4.3.min.css" />
+	<script src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script>
+	<script src="jquery-1.11.1.min.js"></script>
+	<script src="jquery.mobile-1.4.3.min.js"></script>
+	<script src='https://cdn.firebase.com/js/client/1.0.15/firebase.js'></script>
+	<script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/styledmarker/src/StyledMarker.js"></script>
+	<script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/src/data.json"></script>
+	<script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/src/markerclusterer_compiled.js"></script>
+
+	<script> 
+	
+/*
+ * Google Maps documentation: http://code.google.com/apis/maps/documentation/javascript/basics.html
+ * Geolocation documentation: http://dev.w3.org/geo/api/spec-source.html
+ */
+
+	var mappy;
+	var latitude;
+	var longitude;
+	var myDataRef = new Firebase('https://fp2.firebaseio.com/');
+	
+	$(document).on("pageinit", "#map-page", function() {	
+		var defaultLatLng = new google.maps.LatLng(34.0983425, -118.3267434);  // Default to Hollywood, CA when no geolocation support
+		if ( navigator.geolocation ) {
+			function success(pos) {
+				// Location found, show map with these coordinates
+				latitude = pos.coords.latitude;
+				longitude = pos.coords.longitude;
+				var location = new google.maps.LatLng(latitude, longitude);
+				$("#lat").attr("value", latitude);
+				$("#long").attr("value", longitude);
+				drawMap(location);
+			}
+			
+			function fail(error) {
+				drawMap(defaultLatLng);  // Failed to find location, show default map
+			}
+			// Find the users current position.  Cache the location for 5 minutes, timeout after 6 seconds
+			navigator.geolocation.getCurrentPosition(success, fail, {maximumAge: 500000, enableHighAccuracy:true, timeout: 6000});
+		} else {
+			drawMap(defaultLatLng);  // No geolocation support, show default map
+		}
+				
+		function drawMap(latlng) {
+			var myOptions = {
+				zoom: 15,
+				center: latlng,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			};
+			mappy = new google.maps.Map(document.getElementById("map-canvas"), myOptions);
+			// Add an overlay to the map of current lat/lng
+			myDataRef.on('value', showPin);
+		
+			function showPin(snapshot){
+				var mySnapshot = snapshot;
+				data = snapshot.val();
+				for (var identifier in data){
+					console.log("showPin: " + data[identifier].lat + ", " + data[identifier].lng);
+					var latandlong = new google.maps.LatLng(data[identifier].lat, data[identifier].lng);
+					var marker = new StyledMarker({styleIcon:new StyledIcon(StyledIconTypes.MARKER,{color:data[identifier].col,text:data[identifier].num}),position:latandlong,map:mappy});
+
+				console.log("print after marker made in showPin function");
+				}
+			}	
+		}
+	});
+	
+	$(document).on("pageinit", "#other-map", function() {
+		myDataRef.on('value', map2);		
+		function map2(snapshot) {
+			var markers = [];
+			var map;
+			console.log("1");
+			var latitude2;
+			var longitude2;
+			console.log("2");
+
+			if(navigator.geolocation) {
+				console.log("3");
+				navigator.geolocation.getCurrentPosition(function(position) {
+				latitude2 = position.coords.latitude;
+				longitude2 = position.coords.longitude;
+				drawMap(latitude2, longitude2);
+				}); 
+			} else {
+			// Browser doesn't support Geolocation
+				drawMap(22,22);
+			}
+			
+			function drawMap(lat, lng) {
+				var center = new google.maps.LatLng(lat, lng);
+				console.log(lat, lng);
+				var myOptions2 = {
+					zoom: 15,
+					center: center,
+					mapTypeId: google.maps.MapTypeId.ROADMAP
+				};
+				console.log("have made options2");
+				map = new google.maps.Map(document.getElementById("other-canvas"), myOptions2);
+				console.log("have drawn map");
+				drawPins();
+			}
+			
+			function drawPins() {
+			var data2 = snapshot.val();
+			for (var identifier in data2){
+				var latlong = new google.maps.LatLng(data2[identifier].lat, data2[identifier].lng);
+				var marker = new google.maps.Marker({position:latlong, map:map});
+				console.log(marker);
+				markers.push(marker);
+				console.log(data2[identifier].lat);
+				console.log(data2[identifier].lng);
+				}
+			var markerCluster = new MarkerClusterer(map, markers);
+			}
+		}
+		});
+
+	function pinMe(number, color) {
+	
+		if(navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(function(position) {
+			latitude = position.coords.latitude;
+			longitude = position.coords.longitude;
+			pin(latitude, longitude, number, color);
+			}); 
+		}
+		function pin() {
+			myDataRef.push({lat: latitude, lng: longitude, num: number, col:color});
+			console.log("pinMe: " + latitude,longitude);
+			var latandlong = new google.maps.LatLng(latitude, longitude);
+			var marker = new StyledMarker({styleIcon:new StyledIcon(StyledIconTypes.MARKER,{color:color,text:number}),position:latandlong,map:mappy});		
+		}
+	}
+	
+	
+	
+
+	</script>
+	<style>
+	p {
+			text-align:center;
+		}
+		#home {
+
+			background: url('http://www.chicagonow.com/hammervision/files/2014/08/7201810_12d4aed9d6.jpg') no-repeat 50% 50% fixed; 
+
+			background-size: cover;
+			-moz-background-size: cover;
+			-o-background-size: cover;
+			-webkit-background-size: cover;
+
+		}
+		
+		#tips{
+			background-color:mistyrose;
+			background-image: 
+			radial-gradient(circle at 100% 150%, mistyrose 24%, white 25%, white 28%, mistyrose 29%, mistyrose  36%, white 36%, white 40%, transparent 40%, transparent),
+			radial-gradient(circle at 0    150%, mistyrose 24%, white 25%, white 28%, mistyrose  29%, mistyrose 36%, white 36%, white 40%, transparent 40%, transparent),
+			radial-gradient(circle at 50%  100%, white 10%, mistyrose  11%, mistyrose 23%, white 24%, white 30%, mistyrose  31%, mistyrose 43%, white 44%, white 50%, mistyrose  51%, mistyrose  63%, white 64%, white 71%, transparent 71%, transparent),
+			radial-gradient(circle at 100% 50%, white 5%, mistyrose  6%, mistyrose  15%, white 16%, white 20%, mistyrose  21%, mistyrose  30%, white 31%, white 35%, mistyrose  36%, mistyrose 45%, white 46%, white 49%, transparent 50%, transparent),
+			radial-gradient(circle at 0    50%, white 5%, mistyrose  6%, mistyrose 15%, white 16%, white 20%, mistyrose  21%, mistyrose 30%, white 31%, white 35%, mistyrose 36%, mistyrose 45%, white 46%, white 49%, transparent 50%, transparent);
+			background-size:100px 50px;
+			
+		}
+		div {
+			text-align:center;
+		}
+		#t1 {
+			font-family:"Courier New", Courier, monospace;
+			color:black;
+			border-style: solid;
+			border-width:4px;
+			background-color:black;
+			font-size:150%;
+			text-shadow: .1px .1px #000000;
+			background-image: url("cww.png");
+			background-repeat: no-repeat;
+			height: 50px;
+			background-color: #FFE9F5;
+			border-style: solid;
+			border-width: 4px;
+			
+			
+		}
+		.ui-page .ui-header{
+			background: #FFE9F5 !important;
+		
+		}
+		#t2{
+			font-family:"Tahoma", Geneva, sans-serif;
+			color:black;
+			padding-top: 25px;
+			padding-bottom: 25px;
+			padding-left: 65px;
+			border-style: solid;
+			border-width: 4px;
+			text-shadow: .1px .1px #000000;
+			background-color:#FFE9F5;
+			
+		}
+		#t3{
+			font-family:"Tahoma", Geneva, sans-serif;
+			color:black;
+			padding-top: 25px;
+			padding-bottom: 25px;
+			padding-left: 80px;
+			background-color:#FFE9F5;
+			border-style: solid;
+			border-width: 4px;
+			text-shadow: .1px .1px #000000;
+		}
+		#t4{
+			font-family:"Tahoma", Geneva, sans-serif;
+			color:black;
+			padding-top: 25px;
+			padding-bottom: 25px;
+			padding-left: 80px;
+			background-color:#FFE9F5;
+			border-style: solid;
+			border-width: 4px;
+			text-shadow: .1px .1px #000000;
+		}
+		#t5{
+			font-family:"Tahoma", Geneva, sans-serif;
+			color:black;
+			padding-top: 25px;
+			padding-bottom: 25px;
+			padding-left: 60px;
+			background-color:#FFE9F5;
+			text-shadow: .1px .1px #000000;
+			border-style: solid;
+			border-width: 4px;
+		}
+		#map-page, #map-canvas, #other-canvas, #other-map { 
+			width: 100%; 
+			height: 100%; 
+			padding: 0; 
+		}
+		
+	</style>
+	
+</head>
+
+<body>
+	
+
+	
+	<div role="main" data-role="page" id="home" class="ui-content">
+
+		<div   style="background-color:#FF99C2;" data-role="header">
+			<h1> Street <br> Whisperer</h1>
+		</div>
+		<div>
+			<a href="#severity" data-role="button" data-inline="true" style="background-color:#FFB2D1" > I'm being harassed!</a>
+			<br>
+			<a href="#map-page" data-role="button" data-inline="true" style="background-color:#FFCCE0">View Map</a>
+			<br>
+			<a href="#tips" data-role="button" data-inline="true" style="background-color:#FFE6F0">Tips</a>
+		</div>	
+	</div>	
+	
+	<div data-role="page" id="map-page" data-url="map-page">
+		<div data-role="header" data-theme="a">
+			<h1>Maps</h1>
+		</div>
+		<div role="main" class="ui-content" id="map-canvas">
+			<!-- map loads here... -->
+		</div>
+		<div data-role="footer">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+			<a href="#map-page" onclick="pinMe(' ', '888888')" data-role="button" data-inline="true" data-theme='b'><h2>Pin my location!</h2></a>
+			<a href="#other-map" data-role="button" data-inline="true" data-theme="b"><h2>View Hotspots</h2></a>
+			<input type="text" id="lat" value="">
+			<input type="text" id="long" value="">
+		</div>
+	</div>
+	
+	<div data-role="page" id="other-map" data-url="other-map">
+		<div data-role="header" data-theme="a">
+			<h1>Special View</h1>
+		</div>
+		<div id="other-canvas">
+			<!-- map loads here... -->
+		</div>
+		<div data-role="footer">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+			<a href="#map-page" data-role="button" data-inline="true" data-theme="b">Map with Pins</a>
+		</div>
+	</div> 
+	
+	<div data-role="page" id="severity">
+
+		<div style="background-color: #CCFFFF" data-role="header">
+			<h1><font face = "helvetica" size = 3 font color = "black" > Severity </font></h1>
+			
+		</div>
+
+		<div  class="ui-content">
+			<p>How bad was the harassment, from one to five?</p>
+			<a href="#1st" data-role="button" data-inline="true" style="background-color:#FFCCE0;">1</a>
+			<a href="#2nd" data-role="button" data-inline="true" style="background-color:#FF99C2;">2</a>
+			<a href="#3rd" data-role="button" data-inline="true" style="background-color:#FF66A3;">3</a>
+			<a href="#4th" data-role="button" data-inline="true" style="background-color:#FF3385;">4</a>
+			<a href="#5th" data-role="button" data-inline="true" style="background-color:#FF0066;">5</a>
+		</div>
+		
+
+		<div style="background-color: pink" data-role="footer">
+			<h4><font face="helvetica" size = 4 font color = "black"> Examples</font></h4>
+		</div>
+			<p><font face="verdana" size = 2 font color ="black">1: Wolf whistles, hooting, etc.</p>
+			<p>2: Name calling, "Smile, baby," comments about appearance, etc.</p>
+			<p>3: Explicit language, continued comments, etc.</p>
+			<p>4: Following you down the street, blocking your way, etc.</p>
+			<p>5: Physical contact.</font></p>
+			
+		<div data-role="footer">
+			<div data-role="collapsible">
+				<h3>Important!</h3>
+				<p><strong>Remember, ALWAYS go with your gut. Take our responses with a grain of salt, and if you feel 
+				uncomfortable responding, you don't have to say anything. Also, you're the only person who knows how bad 
+				the situation is. Never respond to a cat call if you feel like you're in danger.</strong></p>
+			</div>
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+		</div>
+		
+	</div>
+	
+	<div data-role="page" id="tips">
+		<div data-role="header">
+			<h1 id= "t1"> Tips </h1>
+		</div>
+		<p id="t2"> 1. Don't: Address him at all if you're in an isolated place. If you're in an enclosed space, such a subway car or elevator, or alone on a street, you shouldn't hand out a card or address a cat caller for risk of escalating the situation. </p>
+
+		<p id= "t3">2. Do: Speak up. There is a big difference between verbal cat calling and breaking a physical boundary. That's a situation that warrants a more significant response. If a physical boundary is broken, you need to address it in a more confident way. But that doesn't mean you should fight back - in fact, getting physical should be a last resort. Use clear, concise phrases, like 'Stop. Don't touch me,' or 'Leave me alone,' while maintaining eye contact to get your point across.  </p>
+		<p id= "t4"> 3. Don't: Hesitate to call authorities. So often women don't want to call the police because they don't want to overreact, but any time you're feeling vulnerable you need to listen to your gut instincts.</p>
+		<p id= "t5"> 4. Do: Make a scene. Try to move a populated area if someone is following you or trying to grope you, and draw attention to yourself by yelling specific words: 'I need help!' 'Attacker!' You can't go over the top if you feel threatened. The saying 'Better safe than sorry' really applies to this situation.</p>
+	
+		<div role="footer" class="ui-content">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+		</div>
+	
+	</div>
+
+	
+	<div data-role="page" id="1st">
+
+		<div data-role="header">
+			<h1>Don't tell me to smile!</h1>
+		</div>
+		
+		<div data-role="collapsible">
+			<h3>I'm feeling gutsy.</h3>
+			<p>Don't objectify me.</p>
+		</div>
+		<div data-role="collapsible">
+			<h3>Non-confrontational response!</h3>
+			<p>Simply ignore them.</p>
+		</div>
+
+		<div role="footer" class="ui-content">
+			<a href="#map-page" onclick="pinMe('1', '00ff00')" data-role="button" data-inline="true" data-theme='b'><h2>Pin my location!</h2></a>
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+		</div>
+
+	</div>
+	
+	
+	<div data-role="page" id="2nd">
+
+		<div data-role="header">
+			<h1>I'm not your baby!</h1>
+		</div>
+		
+		<div data-role="collapsible">
+			<h3>I'm feeling gutsy.</h3>
+			<p>You must have me confused with someone you think you can talk to like this.</p>
+			<p>Don't be that guy. *roll eyes*</p>
+		</div>
+		<div data-role="collapsible">
+			<h3>Non-confrontational responses!</h3>
+			<p>That is very rude.</p>
+		</div>
+
+		<div role="footer" class="ui-content">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+			<a href="#map-page" onclick="pinMe('2', 'ffff00')" data-role="button" data-inline="true" data-theme='b'><h2>Pin my location!</h2></a>
+		</div>
+
+	</div>
+	
+	<div data-role="page" id="3rd">
+
+		<div data-role="header">
+			<h1> You can't have my number!</h1>
+		</div>
+		
+		<div data-role="collapsible">
+			<h3>I'm feeling gutsy.</h3>
+			<p>What did you just say to me? *combined with expressions of shock and disgust*</p>
+			<p> Explain to me how you think that's appropriate in this situation. </p>
+		</div>
+		<div data-role="collapsible">
+			<h3>Non-confrontational Responses!</h3>
+			<p> Your language is objectifying and it's making me uncomfortable.</p>
+			<p> Just letting you know, when you say those things, it's not a compliment. It's actually a form of sexual harassment, WHICH IS ILLEGAL! </p>
+		</div>
+
+		<div role="footer" class="ui-content">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+			<a href="#map-page" onclick="pinMe('3', 'ffa500')" data-role="button" data-inline="true" data-theme='b'><h2>Pin my location!</h2></a>
+		</div>
+
+	</div>	
+	
+	<div data-role="page" id="4th">
+
+		<div data-role="header">
+			<h1>You kiss with that mouth?</h1>
+		</div>
+		
+		<div data-role="collapsible">
+			<h3>I'm feeling gutsy.</h3>
+			<p>You're actually going to sexually harass me in front of all of these people?</p>
+			<p> THIS IS ILLEGAL! I AM GOING TO CALL THE COPS if you don't leave me alone. </p>
+			<p> This is degrading and belittling, not to mention the fact that you are objectifying me. </p>
+		</div>
+		<div data-role="collapsible">
+			<h3>Non-confrontational Responses!</h3>
+			<p>Put distance between you and the harasser.</p>
+			<p>Go to an open and populated area and ask for help.</p>
+		</div>
+
+		<div role="footer" class="ui-content">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+			<a href="#map-page" onclick="pinMe('4', 'ff3333')" data-role="button" data-inline="true" data-theme='b'><h2>Pin my location!</h2></a>
+		</div>
+
+	</div>
+
+	<div data-role="page" id="5th">
+
+		<div data-role="header">
+			<h1>I'm a person, not an animal!</h1>
+		</div>
+		
+		<div data-role="collapsible">
+			<h3>I'm feeling gutsy.</h3>
+			<p>LOUDLY call attention to the harasser's behavior.</p>
+			<p> Try saying, "Get your hands off of me right now, before I call the police!"</p>
+			<p> Try saying, "Someone please help me! This person is harassing me!"</p>
+		</div>
+		<div data-role="collapsible">
+			<h3>Get me out of this situation!</h3>
+			<p>Call the cops.</p>
+			<p> Alert as many people as possible to the situation. *BE VERY EXPLICIT ABOUT THE FACT THAT YOU ARE BEING SEXUALLY ASSAULTED.* </p>
+			<P> Find the nearest store or the nearest authorities.</p>
+		</div>
+
+		<div role="footer" class="ui-content">
+			<a href="#home" data-role="button" data-inline="true" data-theme="b"><h2>Home</h2></a>
+			<a href="#map-page" onclick="pinMe('5', '880000')" data-role="button" data-inline="true" data-theme='b'><h2>Pin my location!</h2></a>
+		</div>
+
+	</div>	
+
+</body>
+</html>
